@@ -1,0 +1,137 @@
+---
+title: "Q4 Reproducible Data Assignment"
+author: "Candidate number: 1052140"
+date: "04/12/2022"
+output: html_document
+---
+
+# Reproducible data
+This document demonstrates reproducible analysis using the Palmer Penguins data set. 
+
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+# Load packages 
+source('functions/libraries.r')
+```
+
+```{r eval = FALSE, echo = FALSE, warning = FALSE, messgae = FALSE}
+# A copy of the original data is saved in file 'data_raw' as 'penguins_raw'. Any other changes will be made to a working copy of the data so that there is no risk to losing the original data set. 
+dir.create('data_raw') 
+write.csv(penguins_raw, 'data_raw/penguins_raw.csv')
+```
+
+```{r}
+# Load the data 
+penguins_raw <- read.csv('data_raw/penguins_raw.csv')
+```
+
+```{r}
+# Clean the data 
+source('functions/cleaning.r')
+penguins_clean <- cleaning(penguins_raw)
+```
+
+```{r eval = FALSE, echo = FALSE, warning = FALSE, message = FALSE}
+# Save a copy of the cleaned data 
+dir.create('data_clean')
+write.csv(penguins_clean, 'data_clean/penguins_clean.csv')
+```
+
+## Statistical Test 
+Using ANCOVA to assess whether the explanatory variables sex and flipper length effect the body mass of Gentoo penguins, and whether there is an interaction between these two variables. 
+
+
+```{r}
+# Filter data to just include Gentoo Penguins 
+penguins_gentoo <- filter(penguins_clean, species == 'Gentoo penguin (Pygoscelis papua)')
+```
+
+```{r}
+# Remove the missing values from the Gentoo data set in the relevant columns
+source('functions/cleaning.r')
+penguins_gentoo_clean <- remove_empty_mass_flipper_sex(penguins_gentoo)
+```
+
+### Hypotheses
+
+**Null hypothesis:** the effect of sex on body mass does not depend on flipper length (and vice versa)  
+**Alternative hypothesis:** the effect of sex on body mass does depend on flipper length (and vice versa)  
+
+```{r}
+# Fit a linear model with an interactive term 
+gentoo_mod1 <- lm(body_mass_g ~ sex*flipper_length_mm, penguins_gentoo_clean)
+```
+
+```{r echo = FALSE, fig.show = 'hide'}
+# Test the assumptions of the linear model 
+plot(gentoo_mod1, which = 2)
+plot(gentoo_mod1, which = 1)
+# Assumptions are met 
+```
+
+```{r}
+# Output of the statistical test 
+summary(gentoo_mod1)
+```
+
+Interpretation of results:  
+- The P value of the interactive term (p = 0.133504) is not significant. Therefore it is most appropriate to refit the model without the interaction. 
+
+### Hypotheses 
+(For main effects of explanatory variables without an interactive term)
+
+**Null hypothesis (sex):** The mean body mass of each sex is not significantly different  
+**Alternative hypothesis (sex):** The mean body mass of each sex is significantly different  
+
+**Null hypothesis (flipper length):** The slope of flipper length against body mass is not significantly different from zero  
+**Alternative hypothesis (flipper length):** The slope of flipper length against body mass is significantly different from zero   
+
+```{r}
+#Fit a linear model without an interactive term 
+gentoo_mod2 <- lm(body_mass_g ~ sex+flipper_length_mm, penguins_gentoo_clean)
+```
+
+```{r, echo = FALSE, fig.show = 'hide'}
+# Test the assumptions of the linear model 
+plot(gentoo_mod2, which = 2)
+plot(gentoo_mod2, which = 1)
+# Assumptions are met 
+```
+
+
+```{r}
+# Output of the statistical test 
+summary(gentoo_mod2)
+```
+
+Interpretation of results:    
+- Second row, P<0.05, shows that the difference between body mass for males and females is significantly different from zero. Indicates that sex has a significant effect on body mass. Males are heavier than females.   
+- Third row, P<0.05, shows that the gradient of the line is significantly different from zero. Indicates that flipper length has a significant effect on body mass. Penguins with longer flippers weigh more. 
+
+## Figure
+
+```{r message = FALSE}
+# Communication of statistical test via a figure 
+# ANCOVA test, using a linear model without an interaction term 
+source('functions/plotting.r')
+gentoo_ancova_plot <- ancova_plot(penguins_gentoo_clean)
+gentoo_ancova_plot
+```
+
+Interpretation of figure:    
+- Lines for female and male do not cross and are approximately parallel which demonstrates that there is no interaction between the explanatory variables (sex and flipper length). The shadows around the lines give the 95% confidence interval and there is no overlap within this range.   
+- Lines are separated and not on top of one another, indicating that sex does effect the body mass of Gentoo penguins. Given that the line for males is higher, male Gentoo penguins have a greater body mass than females.   
+- Gradient of the lines are both positive, indicating that body mass increases with flipper length. Penguins which have longer flippers also have a higher body mass.   
+
+```{r, eval = FALSE, echo = FALSE, warning = FALSE, message = FALSE}
+# Create a folder to save figures into 
+dir.create('figures') 
+```
+
+```{r message = FALSE}
+# Save the figure 
+source('functions/plotting.r')
+save_gentoo_svg(penguins_gentoo_clean,
+                'figures/gentoo_ancova.svg',
+                size = 15, scaling = 0.85)
+```
+
